@@ -1,0 +1,18 @@
+{
+  "domain": "tantron",
+  "name": "Tantron",
+  "version": "0.1.0",
+  "integration_type": "hub",
+  "documentation": "https://github.com/JingBh/hass-tantron",
+  "issue_tracker": "https://github.com/JingBh/hass-tantron/issues",
+  "dependencies": [],
+  "after_dependencies": [
+    "homekit"
+  ],
+  "codeowners": [
+    "@JingBh"
+  ],
+  "config_flow": true,
+  "requirements": [],
+  "iot_class": "cloud_polling"
+}

@@ -1,0 +1,36 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "登录",
+        "description": "请使用您的小泰助手用户名和密码登录",
+        "data": {
+          "phone": "手机号",
+          "password": "密码"
+        }
+      },
+      "household": {
+        "title": "选择家庭",
+        "data": {
+          "household": "家庭"
+        }
+      }
+    },
+    "error": {
+      "connection_error": "无法连接到小泰助手云服务",
+      "authentication_error": "身份认证失败",
+      "no_households": "当前账户没有可用家庭",
+      "unknown": "未知错误"
+    },
+    "abort": {
+      "already_configured": "此家庭已经配置"
+    }
+  },
+  "entity": {
+    "weather": {
+      "weather": {
+        "name": "天气"
+      }
+    }
+  }
+}

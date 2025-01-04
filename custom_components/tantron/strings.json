@@ -1,0 +1,37 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Login",
+        "description": "Please login with your Tantron username and password",
+        "data": {
+          "phone": "Phone Number",
+          "password": "Password"
+        }
+      },
+      "household": {
+        "title": "Select Household",
+        "data": {
+          "household": "Household"
+        }
+      }
+    },
+    "error": {
+      "connection_error": "Cannot connect to Tantron cloud",
+      "authentication_error": "Failed to authenticate",
+      "no_households": "No households available in your account",
+      "unknown": "Unknown error"
+    },
+    "abort": {
+      "already_configured": "The household is already configured",
+      "reauth_failed": "Failed to re-authenticate"
+    }
+  },
+  "entity": {
+    "weather": {
+      "weather": {
+        "name": "Weather"
+      }
+    }
+  }
+}
