@@ -179,114 +179,113 @@ class TantronWeatherEntity(WeatherEntity):
         return self._attr_condition
 
     async def async_update(self):
-        async with self.cloud as cloud:
-            if self.latitude is None or self.longitude is None:
-                self.latitude, self.longitude = await cloud.get_household_coordinates()
+        await self.update_coordinates()
 
-            data = await cloud.get_weather('now', self.latitude, self.longitude)
-            if type(data) is not dict:
-                _LOGGER.error(f'failed to parse weather data: {data}')
-                return
-            data = data.get('now', {})
-            _LOGGER.debug(f'weather data: {data}')
+        data = await self.cloud.get_weather('now', self.latitude, self.longitude)
+        if type(data) is not dict:
+            _LOGGER.error(f'failed to parse weather data: {data}')
+            return
+        data = data.get('now', {})
+        _LOGGER.debug(f'weather data: {data}')
 
-            self._attr_native_temperature = float(data['temp'])
-            if data.get('feelsLike'):
-                self._attr_native_apparent_temperature = float(data['feelsLike'])
-            self._attr_condition = CONDITION_MAP.get(data['icon'], EXCEPTIONAL)
-            if data.get('wind360'):
-                self._attr_wind_bearing = float(data['wind360'])
-            if data.get('windSpeed'):
-                self._attr_native_wind_speed = float(data['windSpeed'])
-            if data.get('humidity'):
-                self._attr_humidity = float(data['humidity'])
-            if data.get('pressure'):
-                self._attr_native_pressure = float(data['pressure'])
-            if data.get('vis'):
-                self._attr_native_visibility = float(data['vis'])
-            if data.get('cloud'):
-                self._attr_cloud_coverage = int(data['cloud'])
-            if data.get('dew'):
-                self._attr_native_dew_point = float(data['dew'])
+        self._attr_native_temperature = float(data['temp'])
+        if data.get('feelsLike'):
+            self._attr_native_apparent_temperature = float(data['feelsLike'])
+        self._attr_condition = CONDITION_MAP.get(data['icon'], EXCEPTIONAL)
+        if data.get('wind360'):
+            self._attr_wind_bearing = float(data['wind360'])
+        if data.get('windSpeed'):
+            self._attr_native_wind_speed = float(data['windSpeed'])
+        if data.get('humidity'):
+            self._attr_humidity = float(data['humidity'])
+        if data.get('pressure'):
+            self._attr_native_pressure = float(data['pressure'])
+        if data.get('vis'):
+            self._attr_native_visibility = float(data['vis'])
+        if data.get('cloud'):
+            self._attr_cloud_coverage = int(data['cloud'])
+        if data.get('dew'):
+            self._attr_native_dew_point = float(data['dew'])
 
     async def async_forecast_hourly(self) -> Optional[List[Forecast]]:
+        await self.update_coordinates()
+
         if self.forecast_hourly_expires_at > time.time():
             return self.forecast_hourly
 
         result = []
-        async with self.cloud as cloud:
-            if self.latitude is None or self.longitude is None:
-                self.latitude, self.longitude = await cloud.get_household_coordinates()
+        data = await self.cloud.get_weather('24hour', self.latitude, self.longitude)
+        if type(data) is not dict or type(data.get('hourly')) is not list:
+            _LOGGER.error(f'failed to parse weather data: {data}')
+            return result
+        _LOGGER.debug(f'weather data: {data["hourly"]}')
 
-            data = await cloud.get_weather('24hour', self.latitude, self.longitude)
-            if type(data) is not dict or type(data.get('hourly')) is not list:
-                _LOGGER.error(f'failed to parse weather data: {data}')
-                return result
-            _LOGGER.debug(f'weather data: {data}')
+        for item in data['hourly']:
+            forecast = Forecast(datetime=item['fxTime'])
+            forecast['native_temperature'] = float(item['temp'])
+            forecast['condition'] = CONDITION_MAP.get(item['icon'], EXCEPTIONAL)
+            if item.get('wind360'):
+                forecast['wind_bearing'] = float(item['wind360'])
+            if item.get('windSpeed'):
+                forecast['native_wind_speed'] = float(item['windSpeed'])
+            if item.get('humidity'):
+                forecast['humidity'] = float(item['humidity'])
+            if item.get('precip'):
+                forecast['native_precipitation'] = float(item['precip'])
+            if item.get('pop'):
+                forecast['precipitation_probability'] = int(item['pop'])
+            if item.get('pressure'):
+                forecast['native_pressure'] = float(item['pressure'])
+            if item.get('cloud'):
+                forecast['cloud_coverage'] = int(item['cloud'])
+            if item.get('dew'):
+                forecast['native_dew_point'] = float(item['dew'])
+            result.append(forecast)
 
-            for item in data['hourly']:
-                forecast = Forecast(datetime=item['fxTime'])
-                forecast['native_temperature'] = float(item['temp'])
-                forecast['condition'] = CONDITION_MAP.get(item['icon'], EXCEPTIONAL)
-                if item.get('wind360'):
-                    forecast['wind_bearing'] = float(item['wind360'])
-                if item.get('windSpeed'):
-                    forecast['native_wind_speed'] = float(item['windSpeed'])
-                if item.get('humidity'):
-                    forecast['humidity'] = float(item['humidity'])
-                if item.get('precip'):
-                    forecast['native_precipitation'] = float(item['precip'])
-                if item.get('pop'):
-                    forecast['precipitation_probability'] = int(item['pop'])
-                if item.get('pressure'):
-                    forecast['native_pressure'] = float(item['pressure'])
-                if item.get('cloud'):
-                    forecast['cloud_coverage'] = int(item['cloud'])
-                if item.get('dew'):
-                    forecast['native_dew_point'] = float(item['dew'])
-                result.append(forecast)
-
-            self.forecast_hourly = result
-            self.forecast_hourly_expires_at = time.time() + int(data.get('expireTime', 0))
-
+        self.forecast_hourly = result
+        self.forecast_hourly_expires_at = time.time() + int(data.get('expireTime', 0))
         return result
 
     async def async_forecast_daily(self) -> Optional[List[Forecast]]:
+        await self.update_coordinates()
+
         if self.forecast_daily_expires_at > time.time():
             return self.forecast_daily
 
         result = []
-        async with self.cloud as cloud:
-            if self.latitude is None or self.longitude is None:
-                self.latitude, self.longitude = await cloud.get_household_coordinates()
+        data = await self.cloud.get_weather('7day', self.latitude, self.longitude)
+        if type(data) is not dict or type(data.get('daily')) is not list:
+            _LOGGER.error(f'failed to parse weather data: {data}')
+            return result
+        _LOGGER.debug(f'weather data: {data["daily"]}')
 
-            data = await cloud.get_weather('7day', self.latitude, self.longitude)
-            if type(data) is not dict or type(data.get('daily')) is not list:
-                _LOGGER.error(f'failed to parse weather data: {data}')
-                return result
-            _LOGGER.debug(f'weather data: {data}')
+        for item in data['daily']:
+            forecast = Forecast(datetime=item['fxDate'])
+            forecast['native_temperature'] = float(item['tempMax'])
+            forecast['native_templow'] = float(item['tempMin'])
+            forecast['condition'] = CONDITION_MAP.get(item['iconDay'], EXCEPTIONAL)
+            if item.get('wind360Day'):
+                forecast['wind_bearing'] = float(item['wind360Day'])
+            if item.get('windSpeedDay'):
+                forecast['native_wind_speed'] = float(item['windSpeedDay'])
+            if item.get('precip'):
+                forecast['native_precipitation'] = float(item['precip'])
+            if item.get('uvIndex'):
+                forecast['uv_index'] = float(item['uvIndex'])
+            if item.get('humidity'):
+                forecast['humidity'] = float(item['humidity'])
+            if item.get('pressure'):
+                forecast['native_pressure'] = float(item['pressure'])
+            if item.get('cloud'):
+                forecast['cloud_coverage'] = int(item['cloud'])
+            result.append(forecast)
 
-            for item in data['daily']:
-                forecast = Forecast(datetime=item['fxDate'])
-                forecast['native_temperature'] = float(item['tempMax'])
-                forecast['native_templow'] = float(item['tempMin'])
-                forecast['condition'] = CONDITION_MAP.get(item['iconDay'], EXCEPTIONAL)
-                if item.get('wind360Day'):
-                    forecast['wind_bearing'] = float(item['wind360Day'])
-                if item.get('windSpeedDay'):
-                    forecast['native_wind_speed'] = float(item['windSpeedDay'])
-                if item.get('precip'):
-                    forecast['native_precipitation'] = float(item['precip'])
-                if item.get('uvIndex'):
-                    forecast['uv_index'] = float(item['uvIndex'])
-                if item.get('humidity'):
-                    forecast['humidity'] = float(item['humidity'])
-                if item.get('pressure'):
-                    forecast['native_pressure'] = float(item['pressure'])
-                if item.get('cloud'):
-                    forecast['cloud_coverage'] = int(item['cloud'])
-                result.append(forecast)
-
-            self.forecast_daily = result
-            self.forecast_daily_expires_at = time.time() + int(data.get('expireTime', 0))
+        self.forecast_daily = result
+        self.forecast_daily_expires_at = time.time() + int(data.get('expireTime', 0))
         return result
+
+    async def update_coordinates(self):
+        if not self.latitude or not self.longitude:
+            self.latitude, self.longitude = await self.cloud.get_household_coordinates()
+            self.forecast_hourly_expires_at = 0
+            self.forecast_daily_expires_at = 0

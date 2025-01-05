@@ -14,10 +14,9 @@ if TYPE_CHECKING:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry[TantronCloud]) -> bool:
-    _cloud = TantronCloud(entry.data.get('token'), entry.data.get('household'))
+    _cloud = TantronCloud(hass, entry.data.get('token'), entry.data.get('household'))
     try:
-        async with _cloud as cloud:
-            await cloud.get_household()
+        await _cloud.get_household()
     except TantronCloudError as e:
         raise ConfigEntryAuthFailed from e
     except Exception as e:

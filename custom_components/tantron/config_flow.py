@@ -41,9 +41,9 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
             try:
                 phone = user_input['phone']
                 password = TantronCloud.hash_password(user_input['password'])
-                async with TantronCloud() as cloud:
-                    token = await cloud.login(phone, password)
-                    households = await cloud.list_households()
+                cloud = TantronCloud(self.hass)
+                token = await cloud.login(phone, password)
+                households = await cloud.list_households()
             except TantronConnectionError:
                 errors['base'] = 'connection_error'
             except TantronAuthenticationError:
@@ -75,8 +75,8 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 household_id = user_input['household']
-                async with TantronCloud(token=self.data['token'], household_id=household_id) as cloud:
-                    household = await cloud.get_household()
+                cloud = TantronCloud(self.hass, token=self.data['token'], household_id=household_id)
+                household = await cloud.get_household()
             except TantronConnectionError:
                 errors['base'] = 'connection_error'
             except TantronAuthenticationError:
@@ -103,9 +103,9 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_reauth(self, entry_data: ConfigEntryData):
         entry = self._get_reauth_entry()
         try:
-            async with TantronCloud(household_id=entry_data['household']) as cloud:
-                token = await cloud.login(entry_data['phone'], entry_data['password'])
-                household = await cloud.get_household()
+            cloud = TantronCloud(self.hass, household_id=entry_data['household'])
+            token = await cloud.login(entry_data['phone'], entry_data['password'])
+            household = await cloud.get_household()
         except Exception:
             return self.async_abort(reason='reauth_failed')
         await self.async_set_unique_id(household['householdId'])
