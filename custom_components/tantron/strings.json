@@ -28,6 +28,11 @@
     }
   },
   "entity": {
+    "binary_sensor": {
+      "gateway_online": {
+        "name": "Gateway Status"
+      }
+    },
     "weather": {
       "weather": {
         "name": "Weather"

@@ -5,6 +5,6 @@ from homeassistant.const import Platform
 DOMAIN = 'tantron'
 
 PLATFORMS: list[Platform] = [
-    # Platform.LIGHT,
+    Platform.BINARY_SENSOR,
     Platform.WEATHER
 ]

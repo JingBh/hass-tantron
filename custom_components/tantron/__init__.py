@@ -17,6 +17,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry[TantronCloud
     _cloud = TantronCloud(hass, entry.data.get('token'), entry.data.get('household'))
     try:
         await _cloud.get_household()
+        await _cloud.load_devices()
     except TantronCloudError as e:
         raise ConfigEntryAuthFailed from e
     except Exception as e:

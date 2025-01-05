@@ -14,6 +14,13 @@ This project is still a work in progress. In the meantime, you can manually clon
 - 登录小泰助手账号
 - 获取家庭列表
 - 获取家庭所在位置天气
+- 获取网关在线状态
+- 获取家庭房间列表
+- 获取家庭设备列表
+
+开发中的功能：
+- 获取设备状态
+- 控制设备
 
 ## Disclaimer
 

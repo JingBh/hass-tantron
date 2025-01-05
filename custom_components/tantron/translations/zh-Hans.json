@@ -27,6 +27,11 @@
     }
   },
   "entity": {
+    "binary_sensor": {
+      "gateway_online": {
+        "name": "网关状态"
+      }
+    },
     "weather": {
       "weather": {
         "name": "天气"
