@@ -19,7 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(minutes=20)
 
-# The following definitions are adapted from `cheny95/qweather`, orignially licensed under the GPL-3.0
+# The following definitions are adapted from `cheny95/qweather`, originally licensed under the GPL-3.0
 # https://github.com/cheny95/qweather/blob/ba3f30b/custom_components/qweather/condition.py
 # https://developers.home-assistant.io/docs/core/entity/weather#recommended-values-for-state-and-condition
 # https://dev.qweather.com/docs/resource/icons/
