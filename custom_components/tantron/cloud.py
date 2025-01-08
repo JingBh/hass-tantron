@@ -35,8 +35,6 @@ class TantronCloud:
             })
         self.token = token
         self.household_id = household_id
-        self.areas: Dict[str, str] = {}
-        self.devices: List[dict] = []
 
     async def login(self, phone: str, password: str) -> str:
         """
@@ -135,29 +133,14 @@ class TantronCloud:
         })
         return self._read_response_json(response)
 
-    async def get_areas(self) -> Dict[str, str]:
+    async def get_areas(self) -> list:
         response = await session.get('device-service/normal/device/location', params={
             'householdId': self.household_id
         }, headers={
             HEADER_TOKEN: self.token
         })
         data = self._read_response_json(response)
-        if type(data) != list:
-            return {}
-
-        result = {}
-        floors = data.get('floorList', [])
-        for floor in floors:
-            for area in floor.get('areaList', []):
-                name = area['name']
-                if len(floors) > 1:
-                    name = f'{floor["name"]}-{name}'
-                result[area['id']] = name
-        return result
-
-    async def load_areas(self):
-        if not self.areas:
-            self.areas = await self.get_areas()
+        return data.get('floorList', [])
 
     async def get_devices(self, device_type: Optional[str] = None, area: Optional[str] = None) -> List[dict]:
         params = {
@@ -177,12 +160,6 @@ class TantronCloud:
         if type(data) != dict:
             return []
         return data.get('list', [])
-
-    async def load_devices(self):
-        if not self.areas:
-            await self.load_areas()
-        if not self.devices:
-            self.devices = await self.get_devices()
 
     @staticmethod
     def hash_password(password: str) -> str:

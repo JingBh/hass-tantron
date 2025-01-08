@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
     from .cloud import TantronCloud
+    from .typing import EntryRuntimeData
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -104,10 +105,10 @@ CONDITION_MAP = {
 
 
 async def async_setup_entry(hass: HomeAssistant,
-                            entry: ConfigEntry[TantronCloud],
+                            entry: ConfigEntry[EntryRuntimeData],
                             async_add_entities: AddEntitiesCallback):
     async_add_entities([
-        TantronWeatherEntity(entry.runtime_data)
+        TantronWeatherEntity(entry.runtime_data['cloud'])
     ], True)
 
 
@@ -186,7 +187,7 @@ class TantronWeatherEntity(WeatherEntity):
             _LOGGER.error(f'failed to parse weather data: {data}')
             return
         data = data.get('now', {})
-        _LOGGER.debug(f'weather data: {data}')
+        # _LOGGER.debug(f'weather data: {data}')
 
         self._attr_native_temperature = float(data['temp'])
         if data.get('feelsLike'):
@@ -218,7 +219,7 @@ class TantronWeatherEntity(WeatherEntity):
         if type(data) is not dict or type(data.get('hourly')) is not list:
             _LOGGER.error(f'failed to parse weather data: {data}')
             return result
-        _LOGGER.debug(f'weather data: {data["hourly"]}')
+        # _LOGGER.debug(f'weather data: {data["hourly"]}')
 
         for item in data['hourly']:
             forecast = Forecast(datetime=item['fxTime'])
@@ -257,7 +258,7 @@ class TantronWeatherEntity(WeatherEntity):
         if type(data) is not dict or type(data.get('daily')) is not list:
             _LOGGER.error(f'failed to parse weather data: {data}')
             return result
-        _LOGGER.debug(f'weather data: {data["daily"]}')
+        # _LOGGER.debug(f'weather data: {data["daily"]}')
 
         for item in data['daily']:
             forecast = Forecast(datetime=item['fxDate'])
