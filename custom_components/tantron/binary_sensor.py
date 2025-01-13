@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from homeassistant.components.binary_sensor import DOMAIN as ENTITY_DOMAIN, BinarySensorEntity, BinarySensorDeviceClass
+from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorDeviceClass
 from homeassistant.const import EntityCategory
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -30,7 +30,7 @@ async def async_setup_entry(hass: HomeAssistant,
 
 
 class GatewayOnlineSensor(CoordinatorEntity[TantronCoordinator], BinarySensorEntity):
-    _attr_unique_id = f'{ENTITY_DOMAIN}.gateway_online'
+    _attr_unique_id = f'gateway.online'
     _attr_has_entity_name = True
     _attr_translation_key = 'gateway_online'
     _attr_entity_category = EntityCategory.DIAGNOSTIC

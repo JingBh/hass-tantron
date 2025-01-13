@@ -4,8 +4,9 @@ import logging
 from datetime import timedelta
 from typing import TYPE_CHECKING, TypedDict
 
+from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, CoordinatorEntity
 
 from .const import DOMAIN
 
@@ -21,11 +22,14 @@ _LOGGER = logging.getLogger(__name__)
 
 class TantronDevice(TypedDict):
     id: str
-    name: str
-    area_id: str
+    type: Optional[str]
+    name: Optional[str]
+    area_id: Optional[str]
     config_id: str
+    icon: Optional[str]
     connection: dict
-    entities: List[dict]
+    functions: List[dict]
+    values: Optional[Dict[str, str]]
     info: DeviceInfo
 
 
@@ -37,7 +41,7 @@ class TantronCoordinator(DataUpdateCoordinator):
         self.gateway: Optional[dict] = None
         self.gateway_info: Optional[DeviceInfo] = None
         self.areas: Dict[str, str] = {}
-        self.devices: List[dict] = []
+        self.devices: Dict[str, TantronDevice] = {}
 
     async def _async_setup(self) -> None:
         await self._load_gateway()
@@ -67,28 +71,91 @@ class TantronCoordinator(DataUpdateCoordinator):
         self.areas = result
 
     async def _load_devices(self):
-        self.devices = []
+        self.devices = {}
         for device in await self.cloud.get_devices():
-            self.devices.append(TantronDevice(
-                id=device['masterId'],
-                name=device['name'],
-                area_id=device['area'],
+            device_id = f'{device["masterId"]}.{device["id"]}'
+            self.devices[device_id] = TantronDevice(
+                id=device_id,
+                type=device.get('type'),
+                name=device.get('name'),
+                area_id=device.get('area'),
                 config_id=device['id'],
+                icon=device.get('icon'),
                 connection={
                     'deviceConfigId': device['id'],
                     'configVersion': device['configVersion'],
                     'masterId': device['masterId'],
                     'version': 0  # value unknown
                 },
-                entities=device.get('functionList', []),
+                functions=device.get('functionList', []),
+                values=device.get('functionValues'),
                 info=DeviceInfo(
-                    identifiers={(DOMAIN, device['masterId'])},
-                    default_manufacturer='Tantron',
+                    identifiers={(DOMAIN, device_id)},
+                    manufacturer='Tantron',
                     name=device.get('name'),
-                    suggested_area=self.areas.get(device['area']),
+                    suggested_area=self.areas.get(device.get('area', '')),
                     via_device=(DOMAIN, self.gateway['id'])
                 )
-            ))
+            )
 
     async def _async_update_data(self):
         await self._load_gateway()
+        await self._load_devices()
+
+
+class TantronDeviceEntity(CoordinatorEntity[TantronCoordinator]):
+
+    def __init__(self, coordinator: TantronCoordinator, device: TantronDevice, function_name: Optional[str] = None):
+        # for multi-function entities, set `function_name` to `None`
+        super().__init__(coordinator)
+        self.device_id = device['id']
+        self.device_state = device
+        self.function_name = function_name
+        self.function_info: Dict[str, dict] = {}
+        self.function_state: Optional[str | Dict[str, str]] = None
+        for function in device['functions']:
+            if function_name is None or function['type'] == function_name:
+                self.function_info[function['type']] = function
+
+    @property
+    def available(self) -> bool:
+        return self.device_state['values'] is not None
+
+    @property
+    def unique_id(self):
+        if self.function_name is not None:
+            return f'{self.device_id}.{self.function_name}'
+        else:
+            return self.device_id
+
+    @property
+    def has_entity_name(self) -> bool:
+        return self.function_name is not None
+
+    @property
+    def name(self) -> Optional[str]:
+        if self.function_name is not None:
+            return self.function_info.get(self.function_name, {}).get('name')
+        return None
+
+    @property
+    def device_info(self) -> Optional[DeviceInfo]:
+        if self.device_state is not None:
+            return self.device_state['info']
+
+    @callback
+    def _handle_coordinator_update(self):
+        new_state = self.coordinator.devices.get(self.device_id)
+        if new_state is not None and new_state != self.device_state:
+            self.device_state = new_state
+            self._update_function_state()
+            self.async_write_ha_state()
+
+    def _update_function_state(self):
+        if self.device_state['values'] is not None:
+            if self.function_name is not None:
+                self.function_state = self.device_state['values'].get(self.function_name)
+            else:
+                self.function_state = self.device_state['values']
+        else:
+            self.function_state = None
