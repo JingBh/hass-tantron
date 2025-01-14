@@ -6,6 +6,7 @@ DOMAIN = 'tantron'
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
+    Platform.LIGHT,
     Platform.SENSOR,
     Platform.WEATHER
 ]

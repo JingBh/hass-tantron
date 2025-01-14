@@ -159,3 +159,24 @@ class TantronDeviceEntity(CoordinatorEntity[TantronCoordinator]):
                 self.function_state = self.device_state['values']
         else:
             self.function_state = None
+
+    async def _send_values(self, values: str | Dict[str, str]):
+        commands = []
+        if isinstance(values, str) and self.function_name is not None:
+            values = {
+                self.function_name: values
+            }
+        for key, value in values.items():
+            if not self.function_info.get(key, {}).get('sendList'):
+                continue
+            send_info = self.function_info[key]['sendList'][0]
+            commands.append({
+                'sleep': send_info.get('sleep'),
+                'addr': send_info.get('addr'),
+                'protocolType': send_info.get('protocolType'),
+                'dataType': send_info.get('dataType'),
+                'dataLength': send_info.get('dataLength'),
+                'value': value
+            })
+        if commands:
+            await self.coordinator.cloud.put_state(self.device_state['connection'], commands)

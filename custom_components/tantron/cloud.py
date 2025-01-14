@@ -161,6 +161,15 @@ class TantronCloud:
             return []
         return data.get('list', [])
 
+    async def put_state(self, connection: dict, commands: List[dict]) -> None:
+        response = await session.put('device-service/normal/device/state', json={
+            'cmd': commands,
+            **connection
+        }, headers={
+            HEADER_TOKEN: self.token
+        })
+        return self._read_response_json(response)
+
     @staticmethod
     def hash_password(password: str) -> str:
         hashed = sha256(password.encode()).hexdigest()
