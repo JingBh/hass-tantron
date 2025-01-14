@@ -22,6 +22,16 @@ This project is still a work in progress. In the meantime, you can manually clon
 - 获取设备状态
 - 控制设备
 
+## Known Issues
+
+This integration is tested against my own devices only, does not guarantee to support all features of all devices. If you find your device not working properly, please open an issue with the diagnostics output of your config entry or device entry in Home Assistant.
+
+此集成目前仅在我自己的设备上测试过，不保证支持所有设备。如果你发现你的设备无法正常工作，请在 HomeAssistant 上获取集成或设备的诊断输出，然后开一个 issue。
+
+Pull requests that adds or completes support for more devices are always welcome.
+
+欢迎提出添加更多设备支持的 Pull Request。
+
 ## Disclaimer
 
 This is a third-party integration. The developer is not affiliated with Tantron Group or Home Assistant in any way. The integration is open-source, and is intended for personal use only, do not use it for commercial purposes.

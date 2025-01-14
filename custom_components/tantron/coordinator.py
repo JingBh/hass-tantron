@@ -102,6 +102,11 @@ class TantronCoordinator(DataUpdateCoordinator):
         await self._load_gateway()
         await self._load_devices()
 
+    def get_device(self, device_id: str) -> Optional[dict]:
+        if device_id == self.gateway['id']:
+            return self.gateway
+        return self.devices.get(device_id)
+
 
 class TantronDeviceEntity(CoordinatorEntity[TantronCoordinator]):
 
