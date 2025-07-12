@@ -11,7 +11,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Coor
 from .const import DOMAIN
 
 if TYPE_CHECKING:
-    from typing import Dict, List, Optional
+    from typing import Dict, List, Optional, Sequence
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
     from .cloud import TantronCloud
@@ -36,7 +36,7 @@ class TantronDevice(TypedDict):
 class TantronCoordinator(DataUpdateCoordinator):
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry[EntryRuntimeData], cloud: TantronCloud):
-        super().__init__(hass, _LOGGER, config_entry=entry, name=DOMAIN, update_interval=timedelta(hours=1))
+        super().__init__(hass, _LOGGER, config_entry=entry, name=DOMAIN, update_interval=timedelta(minutes=10))
         self.cloud = cloud
         self.gateway: Optional[dict] = None
         self.gateway_info: Optional[DeviceInfo] = None
@@ -99,8 +99,12 @@ class TantronCoordinator(DataUpdateCoordinator):
             )
 
     async def _async_update_data(self):
+        _LOGGER.debug('Updating Tantron data')
         await self._load_gateway()
         await self._load_devices()
+
+    async def _async_subscribe_data(self, devices: Sequence[TantronDevice]):
+        pass
 
     def get_device(self, device_id: str) -> Optional[dict]:
         if device_id == self.gateway['id']:
@@ -109,6 +113,8 @@ class TantronCoordinator(DataUpdateCoordinator):
 
 
 class TantronDeviceEntity(CoordinatorEntity[TantronCoordinator]):
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator: TantronCoordinator, device: TantronDevice, function_name: Optional[str] = None):
         # for multi-function entities, set `function_name` to `None`
@@ -134,24 +140,25 @@ class TantronDeviceEntity(CoordinatorEntity[TantronCoordinator]):
             return self.device_id
 
     @property
-    def has_entity_name(self) -> bool:
-        return self.function_name is not None
-
-    @property
     def name(self) -> Optional[str]:
         if self.function_name is not None:
             return self.function_info.get(self.function_name, {}).get('name')
-        return None
+        return self.device_state.get('name')
 
     @property
     def device_info(self) -> Optional[DeviceInfo]:
         if self.device_state is not None:
             return self.device_state['info']
+        return None
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._update_function_state()
 
     @callback
     def _handle_coordinator_update(self):
-        new_state = self.coordinator.devices.get(self.device_id)
-        if new_state is not None and new_state != self.device_state:
+        new_state = self.coordinator.get_device(self.device_id)
+        if new_state is not None and self.device_state != new_state:
             self.device_state = new_state
             self._update_function_state()
             self.async_write_ha_state()
@@ -167,21 +174,22 @@ class TantronDeviceEntity(CoordinatorEntity[TantronCoordinator]):
 
     async def _send_values(self, values: str | Dict[str, str]):
         commands = []
-        if isinstance(values, str) and self.function_name is not None:
+        if not isinstance(values, dict) and self.function_name is not None:
             values = {
-                self.function_name: values
+                self.function_name: str(values)
             }
         for key, value in values.items():
             if not self.function_info.get(key, {}).get('sendList'):
                 continue
             send_info = self.function_info[key]['sendList'][0]
             commands.append({
-                'sleep': send_info.get('sleep'),
-                'addr': send_info.get('addr'),
-                'protocolType': send_info.get('protocolType'),
                 'dataType': send_info.get('dataType'),
                 'dataLength': send_info.get('dataLength'),
-                'value': value
+                'addr': send_info.get('addr'),
+                'protocolType': send_info.get('protocolType'),
+                'value': value,
+                'sleep': send_info.get('sleep'),
+                'type': key
             })
         if commands:
             await self.coordinator.cloud.put_state(self.device_state['connection'], commands)

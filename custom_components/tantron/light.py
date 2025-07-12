@@ -38,8 +38,9 @@ class TantronLight(TantronDeviceEntity, LightEntity):
 
     @property
     def is_on(self) -> bool | None:
-        if self.device_state is not None:
-            return
+        if self.function_state is not None:
+            return self.function_state == '1'
+        return None
 
     async def async_turn_on(self, **kwargs) -> None:
         await self._send_values('1')

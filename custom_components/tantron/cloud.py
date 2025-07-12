@@ -20,21 +20,26 @@ BASE_URL = 'https://smart.i-ttg.net/'
 HEADER_TOKEN = 'access_token'
 USER_AGENT = 'TantronAssistant/1.1.8 (iPhone; iOS 18.2; Scale/3.00)'
 
-session: Optional[AsyncClient] = None
 token_cache = {}
 
 
 class TantronCloud:
+
+    _session: Optional[AsyncClient] = None
+
     def __init__(self, hass: HomeAssistant, token: Optional[str] = None, household_id: Optional[str] = None):
-        global session
-        if session is None:
-            session = create_async_httpx_client(hass)
-            session.base_url = BASE_URL
-            session.headers.update({
-                'User-Agent': USER_AGENT
-            })
+        self.hass = hass
         self.token = token
         self.household_id = household_id
+
+    async def _get_session(self) -> AsyncClient:
+        if not self._session:
+            self._session = create_async_httpx_client(self.hass)
+            self._session.base_url = BASE_URL
+            self._session.headers.update({
+                'User-Agent': USER_AGENT
+            })
+        return self._session
 
     async def login(self, phone: str, password: str) -> str:
         """
@@ -45,6 +50,7 @@ class TantronCloud:
         so that this integration cannot be used together with the WeApp.
         Official Android / iOS app is not affected.
         """
+        session = await self._get_session()
 
         # if the phone has a cached token, verify it
         if phone in token_cache:
@@ -77,12 +83,16 @@ class TantronCloud:
         return data['accessToken']
 
     async def get_user(self) -> dict:
+        session = await self._get_session()
+
         response = await session.get('user-service/user', headers={
             HEADER_TOKEN: self.token
         })
         return self._read_response_json(response)
 
     async def list_households(self) -> Dict[str, str]:
+        session = await self._get_session()
+
         response = await session.get('user-service/normal/household/list', headers={
             HEADER_TOKEN: self.token
         })
@@ -96,8 +106,11 @@ class TantronCloud:
         }
 
     async def get_household(self, detailed: bool = False) -> dict:
+        session = await self._get_session()
+
         if not self.household_id:
             raise ValueError('household id is not set')
+
         if detailed:
             url = f'user-service/normal/household/detail/{self.household_id}'
         else:
@@ -108,8 +121,11 @@ class TantronCloud:
         return self._read_response_json(response)
 
     async def get_household_coordinates(self) -> Tuple[float, float]:
+        session = await self._get_session()
+
         if not self.household_id:
             raise ValueError('household id is not set')
+
         response = await session.get(f'hinge-service/normal/court/household/{self.household_id}', headers={
             HEADER_TOKEN: self.token
         })
@@ -117,6 +133,8 @@ class TantronCloud:
         return float(data['lat']), float(data['lon'])
 
     async def get_weather(self, period: str, latitude: float, longitude: float) -> dict:
+        session = await self._get_session()
+
         response = await session.get(f'common-service/external/weather/{period}', params={
             'lat': latitude,
             'lon': longitude
@@ -126,6 +144,8 @@ class TantronCloud:
         return self._read_response_json(response)
 
     async def get_gateway(self) -> dict:
+        session = await self._get_session()
+
         response = await session.get(f'device-service/normal/gateway', params={
             'householdId': self.household_id
         }, headers={
@@ -134,6 +154,8 @@ class TantronCloud:
         return self._read_response_json(response)
 
     async def get_areas(self) -> list:
+        session = await self._get_session()
+
         response = await session.get('device-service/normal/device/location', params={
             'householdId': self.household_id
         }, headers={
@@ -143,6 +165,8 @@ class TantronCloud:
         return data.get('floorList', [])
 
     async def get_devices(self, device_type: Optional[str] = None, area: Optional[str] = None) -> List[dict]:
+        session = await self._get_session()
+
         params = {
             'householdId': self.household_id,
             'pageNum': 1,
@@ -162,6 +186,8 @@ class TantronCloud:
         return data.get('list', [])
 
     async def put_state(self, connection: dict, commands: List[dict]) -> None:
+        session = await self._get_session()
+
         response = await session.put('device-service/normal/device/state', json={
             'cmd': commands,
             **connection

@@ -19,7 +19,15 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-TANTRON_SENSOR_CLASS_MAP = {
+TANTRON_SENSOR_NAME_CLASS_MAP = {
+    '温度': SensorDeviceClass.TEMPERATURE,
+    '湿度': SensorDeviceClass.HUMIDITY,
+    'PM2.5': SensorDeviceClass.PM25,
+    'PM10': SensorDeviceClass.PM10,
+    'CO2': SensorDeviceClass.CO2,
+}
+
+TANTRON_SENSOR_ICON_CLASS_MAP = {
     'icon_envsensor_01': SensorDeviceClass.TEMPERATURE,
     'icon_envsensor_02': SensorDeviceClass.HUMIDITY,
     'icon_envsensor_03': SensorDeviceClass.PM25,
@@ -54,7 +62,9 @@ class TantronEnvSensor(TantronDeviceEntity, SensorEntity):
 
     @property
     def device_class(self) -> Optional[SensorDeviceClass]:
-        return TANTRON_SENSOR_CLASS_MAP.get(self.device_state.get('icon', ''))
+        if self.device_state['name'] in TANTRON_SENSOR_NAME_CLASS_MAP:
+            return TANTRON_SENSOR_NAME_CLASS_MAP[self.device_state['name']]
+        return TANTRON_SENSOR_ICON_CLASS_MAP.get(self.device_state.get('icon', ''))
 
     @property
     def native_unit_of_measurement(self) -> Optional[str]:
