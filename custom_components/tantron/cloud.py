@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from http import HTTPStatus
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 from hashlib import sha256
 
 from homeassistant.helpers.httpx_client import create_async_httpx_client
@@ -10,7 +10,7 @@ from homeassistant.helpers.httpx_client import create_async_httpx_client
 from .error import TantronAuthenticationError, TantronConnectionError, TantronCloudError
 
 if TYPE_CHECKING:
-    from typing import Optional, Dict, List
+    from typing import Optional, Dict, List, Tuple
     from homeassistant.core import HomeAssistant
     from httpx import AsyncClient, Response
 
@@ -195,6 +195,17 @@ class TantronCloud:
             HEADER_TOKEN: self.token
         })
         return self._read_response_json(response)
+
+    async def get_state(self, connections: List[dict]) -> List[dict]:
+        """
+        Wait for state changes for the given connections.
+        """
+        session = await self._get_session()
+
+        response = session.post('state-service/shadow/device/state/block', json=connections, headers={
+            HEADER_TOKEN: self.token
+        }, timeout=None)
+        return self._read_response_json(await response)
 
     @staticmethod
     def hash_password(password: str) -> str:

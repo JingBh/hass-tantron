@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
 from datetime import timedelta
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, Dict, TypedDict
 
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -11,7 +13,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Coor
 from .const import DOMAIN
 
 if TYPE_CHECKING:
-    from typing import Dict, List, Optional, Sequence
+    from typing import List, Optional
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
     from .cloud import TantronCloud
@@ -31,17 +33,20 @@ class TantronDevice(TypedDict):
     functions: List[dict]
     values: Optional[Dict[str, str]]
     info: DeviceInfo
+    updated_at: Optional[int]  # ns timestamp of last update, used for change detection
 
 
-class TantronCoordinator(DataUpdateCoordinator):
+class TantronCoordinator(DataUpdateCoordinator[Dict[str, TantronDevice]]):
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry[EntryRuntimeData], cloud: TantronCloud):
-        super().__init__(hass, _LOGGER, config_entry=entry, name=DOMAIN, update_interval=timedelta(minutes=10))
+        super().__init__(hass, _LOGGER, config_entry=entry, name=DOMAIN, update_interval=timedelta(hours=1))
         self.cloud = cloud
         self.gateway: Optional[dict] = None
         self.gateway_info: Optional[DeviceInfo] = None
         self.areas: Dict[str, str] = {}
         self.devices: Dict[str, TantronDevice] = {}
+        self.device_master_ids: List[str] = []
+        self.subscription_task: Optional[asyncio.Task] = None
 
     async def _async_setup(self) -> None:
         await self._load_gateway()
@@ -60,7 +65,7 @@ class TantronCoordinator(DataUpdateCoordinator):
         )
 
     async def _load_areas(self):
-        result = {}
+        result: Dict[str, str] = {}
         floors = await self.cloud.get_areas()
         for floor in floors:
             for area in floor.get('areaList', []):
@@ -71,10 +76,13 @@ class TantronCoordinator(DataUpdateCoordinator):
         self.areas = result
 
     async def _load_devices(self):
-        self.devices = {}
+        result: Dict[str, TantronDevice] = {}
+        master_ids = set()
+
         for device in await self.cloud.get_devices():
             device_id = f'{device["masterId"]}.{device["id"]}'
-            self.devices[device_id] = TantronDevice(
+            master_ids.add(device['masterId'])
+            result[device_id] = TantronDevice(
                 id=device_id,
                 type=device.get('type'),
                 name=device.get('name'),
@@ -95,21 +103,66 @@ class TantronCoordinator(DataUpdateCoordinator):
                     name=device.get('name'),
                     suggested_area=self.areas.get(device.get('area', '')),
                     via_device=(DOMAIN, self.gateway['id'])
-                )
+                ),
+                updated_at=time.time_ns()
             )
+
+        self.devices = result
+        self.device_master_ids = list(master_ids)
+
+        if self.subscription_task is not None:
+            self.subscription_task.cancel()
+        self.subscription_task = self.config_entry.async_create_background_task(
+            self.hass,
+            self._async_subscribe_data(),
+            'tantron_subscription_task'
+        )
 
     async def _async_update_data(self):
         _LOGGER.debug('Updating Tantron data')
         await self._load_gateway()
         await self._load_devices()
-
-    async def _async_subscribe_data(self, devices: Sequence[TantronDevice]):
-        pass
+        self.data = self.devices
 
     def get_device(self, device_id: str) -> Optional[dict]:
         if device_id == self.gateway['id']:
             return self.gateway
         return self.devices.get(device_id)
+
+    async def _async_subscribe_data(self):
+        while True:
+            try:
+                if not self.devices:
+                    await asyncio.sleep(1)
+                    continue
+
+                connections = [device['connection'] for device in self.devices.values()]
+                for item in await self.cloud.get_state(connections):
+                    if not item.get('deviceConfigId'):
+                        continue
+
+                    for possible_master_id in self.device_master_ids:
+                        device_id = f'{possible_master_id}.{item["deviceConfigId"]}'
+                        if device_id in self.devices:
+                            self.devices[device_id]['connection']['version'] = item.get('version', 0)
+
+                            values = item.get('function')
+                            if values is None:
+                                self.devices[device_id]['values'] = None
+                            else:
+                                self.devices[device_id]['values'].update(values)
+
+                            self.devices[device_id]['updated_at'] = time.time_ns()
+
+                self.async_set_updated_data(self.devices)
+                await asyncio.sleep(0.1)
+
+            except asyncio.CancelledError:
+                return
+
+            except:
+                _LOGGER.warning('Tantron data subscription interrupted, retrying in 5 seconds', exc_info=True)
+                await asyncio.sleep(5)
 
 
 class TantronDeviceEntity(CoordinatorEntity[TantronCoordinator]):
@@ -121,6 +174,7 @@ class TantronDeviceEntity(CoordinatorEntity[TantronCoordinator]):
         super().__init__(coordinator)
         self.device_id = device['id']
         self.device_state = device
+        self.device_updated_at: Optional[int] = None
         self.function_name = function_name
         self.function_info: Dict[str, dict] = {}
         self.function_state: Optional[str | Dict[str, str]] = None
@@ -158,7 +212,7 @@ class TantronDeviceEntity(CoordinatorEntity[TantronCoordinator]):
     @callback
     def _handle_coordinator_update(self):
         new_state = self.coordinator.get_device(self.device_id)
-        if new_state is not None and self.device_state != new_state:
+        if new_state is not None and self.device_updated_at != new_state['updated_at']:
             self.device_state = new_state
             self._update_function_state()
             self.async_write_ha_state()
@@ -171,6 +225,8 @@ class TantronDeviceEntity(CoordinatorEntity[TantronCoordinator]):
                 self.function_state = self.device_state['values']
         else:
             self.function_state = None
+        self.device_updated_at = self.device_state['updated_at']
+        _LOGGER.debug('New function state for %s: %s', self.device_id, self.device_state['values'])
 
     async def _send_values(self, values: str | Dict[str, str]):
         commands = []

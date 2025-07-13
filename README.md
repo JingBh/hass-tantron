@@ -10,17 +10,36 @@ This project is still a work in progress. In the meantime, you can manually clon
 
 ## Features
 
+Implemented features:  
 目前已实现的功能：
-- 登录小泰助手账号
-- 获取家庭列表
-- 获取家庭所在位置天气
-- 获取网关在线状态
-- 获取家庭房间列表
-- 获取家庭设备列表
+- Login with Tantron cloud account  
+  登录小泰助手账号
+- Get household list  
+  获取家庭列表
+- Get weather condition of household location  
+  获取家庭所在位置天气
+- Get gateway device status  
+  获取网关在线状态
+- List household rooms  
+  获取家庭房间列表
+- List household devices  
+  获取家庭设备列表
+- Get device status  
+  获取设备状态
+- Control device  
+  控制设备
 
-开发中的功能：
-- 获取设备状态
-- 控制设备
+Supported device types:  
+目前已支持的设备类型：
+- Environment sensors  
+  环境传感器
+- Lights  
+  灯
+- Curtains  
+  窗帘
+
+Integration with more devices is working in progress.  
+更多设备集成正在开发中...
 
 ## Known Issues
 
