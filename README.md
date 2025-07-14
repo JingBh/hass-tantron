@@ -4,10 +4,17 @@ Custom Home Assistant integration for Tantron devices / 小泰助手设备接入
 
 ## Installation
 
-Currently, the only way to install this integration is to clone this repository to your Home Assistant's `custom_components` directory.
-In the future, I might publish this integration to HACS.
+### Manual Install
 
-目前，此集成只能通过手动 clone 到 Home Assistant 的 `custom_components` 目录来安装。
+Clone the repo and copy the `custom_components/tantron` directory to your Home Assistant's `custom_components` directory, then restart Home Assistant.
+
+clone 本仓库并将 `custom_components/tantron` 目录复制到你的 Home Assistant 的 `custom_components` 目录下，然后重启 Home Assistant。
+
+### HACS Install
+
+This integration is not yet available in HACS, but you can add it as a custom repository.
+
+此集成暂时还没有发不到 HACS 上，但是你可以将它添加为一个自定义仓库。
 
 ## Features
 
