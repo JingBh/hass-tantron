@@ -149,6 +149,8 @@ class TantronCoordinator(DataUpdateCoordinator[Dict[str, TantronDevice]]):
                             values = item.get('function')
                             if values is None:
                                 self.devices[device_id]['values'] = None
+                            elif self.devices[device_id]['values'] is None:
+                                self.devices[device_id]['values'] = values
                             else:
                                 self.devices[device_id]['values'].update(values)
 
