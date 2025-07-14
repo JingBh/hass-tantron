@@ -4,9 +4,10 @@ Custom Home Assistant integration for Tantron devices / 小泰助手设备接入
 
 ## Installation
 
-This project is still a work in progress. In the meantime, you can manually clone the repo and install it as a custom component if you want to try it out. When the project is more stable, it will be published to somewhere like HACS. 
+Currently, the only way to install this integration is to clone this repository to your Home Assistant's `custom_components` directory.
+In the future, I might publish this integration to HACS.
 
-仍在开发中，敬请期待。
+目前，此集成只能通过手动 clone 到 Home Assistant 的 `custom_components` 目录来安装。
 
 ## Features
 
@@ -31,15 +32,18 @@ Implemented features:
 
 Supported device types:  
 目前已支持的设备类型：
-- Environment sensors  
+- Environment sensor  
   环境传感器
-- Lights  
+- Light  
   灯
-- Curtains  
+- Curtain  
   窗帘
-
-Integration with more devices is working in progress.  
-更多设备集成正在开发中...
+- Air conditioner, heater  
+  空调、地暖
+- Air purifier  
+  新风
+- Motion detector  
+  红外幕帘
 
 ## Known Issues
 

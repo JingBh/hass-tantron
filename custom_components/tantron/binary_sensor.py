@@ -9,13 +9,15 @@ from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .coordinator import TantronCoordinator
+from .coordinator import TantronCoordinator, TantronDeviceEntity
 
 if TYPE_CHECKING:
-    from typing import Optional
+    from typing import Optional, List
     from homeassistant.core import HomeAssistant
     from homeassistant.config_entries import ConfigEntry
+    from homeassistant.helpers.entity import Entity
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
+    from .coordinator import TantronDevice
     from .typing import EntryRuntimeData
 
 _LOGGER = logging.getLogger(__name__)
@@ -24,9 +26,12 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistant,
                             entry: ConfigEntry[EntryRuntimeData],
                             async_add_entities: AddEntitiesCallback):
-    async_add_entities([
-        GatewayOnlineSensor(entry.runtime_data['coordinator'])
-    ])
+    coordinator = entry.runtime_data['coordinator']
+    entities: List[Entity] = [GatewayOnlineSensor(coordinator)]
+    for device_id, device in coordinator.devices.items():
+        if device['type'] == 'secuSensor' and device['icon'] == 'icon_secusensor_02':
+            entities.append(TantronMotionSensor(coordinator, device))
+    async_add_entities(entities)
 
 
 class GatewayOnlineSensor(CoordinatorEntity[TantronCoordinator], BinarySensorEntity):
@@ -47,14 +52,28 @@ class GatewayOnlineSensor(CoordinatorEntity[TantronCoordinator], BinarySensorEnt
             self.async_write_ha_state()
 
     @property
-    def device_info(self) -> DeviceInfo | None:
+    def device_info(self) -> Optional[DeviceInfo]:
         return self.coordinator.gateway_info
 
     @property
-    def is_on(self) -> bool | None:
+    def is_on(self) -> Optional[bool]:
         if self._state is not None:
             if self._state.get('onlineState') == 0:
                 return False
             if self._state.get('onlineState') == 1:
                 return True
+        return None
+
+
+class TantronMotionSensor(TantronDeviceEntity, BinarySensorEntity):
+
+    _attr_device_class = BinarySensorDeviceClass.MOTION
+
+    def __init__(self, coordinator: TantronCoordinator, device: TantronDevice):
+        super().__init__(coordinator, device, 'status')
+
+    @property
+    def is_on(self) -> Optional[bool]:
+        if self.function_state is not None:
+            return self.function_state == '1'
         return None

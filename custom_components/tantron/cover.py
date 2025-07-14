@@ -39,7 +39,7 @@ class TantronCurtain(TantronDeviceEntity, CoverEntity):
 
     @property
     def is_closed(self) -> Optional[bool]:
-        if self.function_state is not None:
+        if self.function_state is not None and 'switch' in self.function_state:
             return self.function_state['switch'] == '1'
         return None
 
