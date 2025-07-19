@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import functools
 from typing import TYPE_CHECKING
 
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 
 from .cloud import TantronCloud
-from .const import PLATFORMS
+from .const import PLATFORMS, EVENT_PUT_STATE
 from .coordinator import TantronCoordinator
 from .error import TantronCloudError
+from .event import handle_put_state
 from .typing import EntryRuntimeData
 
 if TYPE_CHECKING:
@@ -30,12 +32,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry[EntryRuntime
     await _coordinator.async_config_entry_first_refresh()
 
     # 3. save cloud and coordinator instances and forward setup to platforms
-    entry.runtime_data = EntryRuntimeData(cloud=_cloud, coordinator=_coordinator)
+    entry.runtime_data = EntryRuntimeData(cloud=_cloud, coordinator=_coordinator, handlers=[])
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # 4. register custom event handlers
+    cancel = hass.bus.async_listen(EVENT_PUT_STATE, functools.partial(handle_put_state, cloud=_cloud))
+    entry.runtime_data['handlers'].append(cancel)
+
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry[EntryRuntimeData]) -> bool:
+    # 1. cancel all event handlers
+    for cancel in entry.runtime_data['handlers']:
+        cancel()
+
+    # 2. unload all platforms
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 

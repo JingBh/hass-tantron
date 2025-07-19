@@ -185,7 +185,7 @@ class TantronCloud:
             return []
         return data.get('list', [])
 
-    async def put_state(self, connection: dict, commands: List[dict]) -> None:
+    async def put_state(self, connection: dict, commands: List[dict]):
         session = await self._get_session()
 
         response = await session.put('device-service/normal/device/state', json={
@@ -197,9 +197,6 @@ class TantronCloud:
         return self._read_response_json(response)
 
     async def get_state(self, connections: List[dict]) -> List[dict]:
-        """
-        Wait for state changes for the given connections.
-        """
         session = await self._get_session()
 
         response = session.post('state-service/shadow/device/state/block', json=connections, headers={

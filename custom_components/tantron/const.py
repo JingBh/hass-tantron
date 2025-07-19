@@ -13,3 +13,5 @@ PLATFORMS: list[Platform] = [
     Platform.SENSOR,
     Platform.WEATHER
 ]
+
+EVENT_PUT_STATE = f'{DOMAIN}.put_state'
