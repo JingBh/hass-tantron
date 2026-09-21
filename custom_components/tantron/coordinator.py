@@ -186,7 +186,12 @@ class TantronDeviceEntity(CoordinatorEntity[TantronCoordinator]):
 
     @property
     def available(self) -> bool:
-        return self.device_state['values'] is not None
+        # Availability should track the health of the cloud connection, not
+        # whether a per-device state value happens to be cached. Several device
+        # types (switch lights, curtains) only report on change - or never - so
+        # their cached value is frequently absent even while they are perfectly
+        # reachable. Rely on the coordinator's last update instead.
+        return self.coordinator.last_update_success
 
     @property
     def unique_id(self):

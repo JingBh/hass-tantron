@@ -35,15 +35,23 @@ class TantronLight(TantronDeviceEntity, LightEntity):
 
     def __init__(self, coordinator: TantronCoordinator, device: TantronDevice):
         super().__init__(coordinator, device, 'switch')
+        # These lights only report their state to the cloud when it changes, so
+        # the shadow value is usually absent. Remember the last command locally
+        # so the UI can reflect it optimistically until a real value arrives.
+        self._optimistic_state: bool | None = None
 
     @property
     def is_on(self) -> bool | None:
         if self.function_state is not None:
             return self.function_state == '1'
-        return None
+        return self._optimistic_state
 
     async def async_turn_on(self, **kwargs) -> None:
         await self._send_values('1')
+        self._optimistic_state = True
+        self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs) -> None:
         await self._send_values('0')
+        self._optimistic_state = False
+        self.async_write_ha_state()

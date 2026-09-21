@@ -36,22 +36,29 @@ class TantronCurtain(TantronDeviceEntity, CoverEntity):
 
     def __init__(self, coordinator: TantronCoordinator, device: TantronDevice):
         super().__init__(coordinator, device)
+        # Curtains have no state feedback from the cloud at all, so track the
+        # last command locally to drive the UI optimistically.
+        self._optimistic_closed: Optional[bool] = None
 
     @property
     def is_closed(self) -> Optional[bool]:
         if self.function_state is not None and 'switch' in self.function_state:
             return self.function_state['switch'] == '1'
-        return None
+        return self._optimistic_closed
 
     async def async_close_cover(self, **kwargs: Any) -> None:
         await self._send_values({
             'switch': '1'
         })
+        self._optimistic_closed = True
+        self.async_write_ha_state()
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         await self._send_values({
             'switch': '0'
         })
+        self._optimistic_closed = False
+        self.async_write_ha_state()
 
     async def async_stop_cover(self, **kwargs: Any) -> None:
         await self._send_values({
