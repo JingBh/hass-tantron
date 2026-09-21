@@ -35,18 +35,10 @@ class TantronLight(TantronDeviceEntity, LightEntity):
 
     def __init__(self, coordinator: TantronCoordinator, device: TantronDevice):
         super().__init__(coordinator, device, 'switch')
-        # KNX switch lights are write-only: they never report their state back,
-        # so the cloud shadow keeps no value for them. Remember the last command
-        # locally so the UI can reflect it optimistically.
+        # These lights only report their state to the cloud when it changes, so
+        # the shadow value is usually absent. Remember the last command locally
+        # so the UI can reflect it optimistically until a real value arrives.
         self._optimistic_state: bool | None = None
-
-    @property
-    def available(self) -> bool:
-        # The base class treats an entity as available only when the cloud has a
-        # cached value. Write-only KNX lights never populate that value, which
-        # would keep them permanently unavailable. Fall back to whether the
-        # coordinator itself is healthy so the light stays controllable.
-        return self.coordinator.last_update_success
 
     @property
     def is_on(self) -> bool | None:

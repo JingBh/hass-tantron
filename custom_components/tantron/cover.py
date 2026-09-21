@@ -36,15 +36,9 @@ class TantronCurtain(TantronDeviceEntity, CoverEntity):
 
     def __init__(self, coordinator: TantronCoordinator, device: TantronDevice):
         super().__init__(coordinator, device)
-        # KNX curtains are write-only, just like the switch lights: the cloud
-        # shadow never holds their state. Track the last command locally.
+        # Curtains have no state feedback from the cloud at all, so track the
+        # last command locally to drive the UI optimistically.
         self._optimistic_closed: Optional[bool] = None
-
-    @property
-    def available(self) -> bool:
-        # Write-only KNX curtains never populate the cloud value the base class
-        # relies on, so fall back to the coordinator health to stay controllable.
-        return self.coordinator.last_update_success
 
     @property
     def is_closed(self) -> Optional[bool]:
