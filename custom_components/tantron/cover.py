@@ -36,22 +36,35 @@ class TantronCurtain(TantronDeviceEntity, CoverEntity):
 
     def __init__(self, coordinator: TantronCoordinator, device: TantronDevice):
         super().__init__(coordinator, device)
+        # KNX curtains are write-only, just like the switch lights: the cloud
+        # shadow never holds their state. Track the last command locally.
+        self._optimistic_closed: Optional[bool] = None
+
+    @property
+    def available(self) -> bool:
+        # Write-only KNX curtains never populate the cloud value the base class
+        # relies on, so fall back to the coordinator health to stay controllable.
+        return self.coordinator.last_update_success
 
     @property
     def is_closed(self) -> Optional[bool]:
         if self.function_state is not None and 'switch' in self.function_state:
             return self.function_state['switch'] == '1'
-        return None
+        return self._optimistic_closed
 
     async def async_close_cover(self, **kwargs: Any) -> None:
         await self._send_values({
             'switch': '1'
         })
+        self._optimistic_closed = True
+        self.async_write_ha_state()
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         await self._send_values({
             'switch': '0'
         })
+        self._optimistic_closed = False
+        self.async_write_ha_state()
 
     async def async_stop_cover(self, **kwargs: Any) -> None:
         await self._send_values({
